@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14532d">
+<title>Fokus</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">Fokus</div>
+  <div id="clock" class="clock"></div>
+</header>
+<main id="view"><div class="center muted">Laddar…</div></main>
+<button id="fab" class="fab hidden" aria-label="Fånga">+</button>
+<nav id="nav" class="hidden">
+  <a href="#idag" data-r="idag"><span>☀️</span>Idag</a>
+  <a href="#fokus" data-r="fokus"><span>🎯</span>Fokus</a>
+  <a href="#coach" data-r="coach"><span>💬</span>Coach</a>
+  <a href="#vecka" data-r="vecka"><span>🗓️</span>Vecka</a>
+  <a href="#mer" data-r="mer"><span>☰</span>Mer</a>
+</nav>
+<div id="sheet" class="sheet hidden"></div>
+<div id="toast" class="toast hidden"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
