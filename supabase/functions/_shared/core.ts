@@ -61,8 +61,9 @@ export function dayName(date: string) {
 
 // ---------- Claude ----------
 export async function claude(model: string, system: string, messages: { role: string; content: string }[], maxTokens = 1500) {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) throw new Error("ANTHROPIC_API_KEY saknas i Supabase (Edge Function Secrets).");
+  let key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) { const { data } = await admin().rpc("get_app_secret", { p_name: "anthropic_key" }); key = data as string; }
+  if (!key) throw new Error("API nyckeln för Claude saknas.");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
