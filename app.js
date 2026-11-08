@@ -498,12 +498,14 @@ async function enablePush() {
 // ---------- Start ----------
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 navigator.serviceWorker?.addEventListener("message", (e) => { if (e.data?.url) location.hash = e.data.url.replace(/^\/?/, "").replace(/^#?/, "#"); });
-sb.auth.onAuthStateChange(async (_ev, session) => {
+// Supabase anrop får inte göras direkt i onAuthStateChange (låser sig), därför setTimeout
+async function onSession(session) {
   const was = user?.id;
   user = session?.user || null;
   if (user && was !== user.id) {
-    await loadSettings();
+    try { await loadSettings(); } catch (e) { console.error(e); settings = settings || {}; }
     $("#nav").classList.remove("hidden"); $("#fab").classList.remove("hidden");
     route();
   } else if (!user) route();
-});
+}
+sb.auth.onAuthStateChange((_ev, session) => { setTimeout(() => onSession(session), 0); });
