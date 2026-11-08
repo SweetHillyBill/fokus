@@ -1,4 +1,4 @@
-const CACHE = "fokus-v2";
+const CACHE = "fokus-v3";
 const SHELL = ["./", "index.html", "app.js", "style.css", "manifest.json", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -11,7 +11,7 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith(fetch(e.request).then((r) => { const c = r.clone(); caches.open(CACHE).then((ca) => ca.put(e.request, c)); return r; }).catch(() => caches.match(e.request).then((m) => m || caches.match("index.html"))));
+  e.respondWith(fetch(e.request.url, { cache: "no-cache", credentials: "same-origin" }).then((r) => { const c = r.clone(); caches.open(CACHE).then((ca) => ca.put(e.request, c)); return r; }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((m) => m || caches.match("index.html"))));
 });
 
 self.addEventListener("push", (e) => {
