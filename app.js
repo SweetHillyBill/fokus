@@ -26,11 +26,18 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function toast(msg, ms = 2400) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.add("hidden"), ms); }
 async function q(p) { const { data, error } = await p; if (error) { toast("Fel: " + error.message); throw error; } return data; }
 function sheet(html, onMount) {
-  const s = $("#sheet"); s.innerHTML = `<div class="inner">${html}</div>`; s.classList.remove("hidden");
+  const s = $("#sheet"); const wasOpen = !s.classList.contains("hidden");
+  s.innerHTML = `<div class="inner"><div class="sheetbar"><button class="back" id="sback">‹ Tillbaka</button></div>${html}</div>`;
+  s.classList.remove("hidden");
+  if (!wasOpen) history.pushState({ sheet: 1 }, "");
   s.onclick = (e) => { if (e.target === s) closeSheet(); };
+  $("#sback", s).onclick = () => { closeSheet(); route(); };
   onMount && onMount(s);
 }
-function closeSheet() { $("#sheet").classList.add("hidden"); $("#sheet").innerHTML = ""; }
+function hideSheet() { $("#sheet").classList.add("hidden"); $("#sheet").innerHTML = ""; }
+function closeSheet() { hideSheet(); if (history.state?.sheet) history.back(); }
+// Androids bakåtknapp stänger rutan i stället för att lämna appen
+window.addEventListener("popstate", () => { if (!$("#sheet").classList.contains("hidden")) { hideSheet(); route(); } });
 async function aiBreakdown(id, extra) {
   const { data, error } = await sb.functions.invoke("coach", { body: { mode: "breakdown", task_id: id, extra } });
   if (error) { let m = error.message; try { const j = await error.context.json(); m = j.error || m; } catch {} throw new Error(m); }

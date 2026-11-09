@@ -83,3 +83,6 @@ nav a.on{color:var(--accent);font-weight:700}
 .struck{text-decoration:line-through;color:var(--muted)}
 button.small{font-size:14px;padding:6px 10px;min-height:0}
 #gear{font-size:22px}
+
+.sheetbar{position:sticky;top:-18px;margin:-18px -16px 8px;padding:12px 10px;background:var(--bg);z-index:2;border-bottom:1px solid var(--line)}
+.back{background:transparent;color:var(--accent);font-size:18px;padding:8px 10px;min-height:44px}
