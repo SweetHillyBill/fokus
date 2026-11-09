@@ -191,7 +191,8 @@ async function openTask(id) {
     <div class="add" id="ns"><input placeholder="Lägg till steg…" enterkeyhint="done"><button>+</button></div>
     ${steps.length ? `<p class="muted small">↗ gör ett steg till en egen uppgift som du kan planera på en dag och bryta ner vidare.</p>` : ""}
     ${children.length ? `<h2>Deluppgifter</h2><div class="card list" id="kids">${children.map((c) => row(c, { showDay: true })).join("")}</div>` : ""}
-    <div class="row" style="margin-top:20px"><button id="dn" class="grow">${t.status === "klar" ? "Ångra klar" : "✓ Klar"}</button><button id="rm" class="danger">Ta bort</button></div>`, (s) => {
+    <button id="bk" class="big sec" style="margin-top:20px">‹ Tillbaka</button>
+    <button id="rm" class="danger small" style="margin-top:12px">Ta bort uppgiften</button>`, (s) => {
     const save = async (patch) => { await q(sb.from("tasks").update(patch).eq("id", id)); };
     const reopen = async () => { await openTask(id); route(); };
     $("#ti", s).onchange = async (e) => { await save({ title: e.target.value.trim() || t.title }); route(); };
@@ -215,7 +216,7 @@ async function openTask(id) {
     $("#ait", s).onclick = breakdown("tid");
     if (children.length) bindRows($("#kids", s));
     const par = $("#par", s); if (par) par.onclick = () => openTask(parent.id);
-    $("#dn", s).onclick = async () => { closeSheet(); await toggleDone(id); };
+    $("#bk", s).onclick = () => { closeSheet(); route(); };
     $("#rm", s).onclick = async () => { await save({ status: "struken" }); closeSheet(); toast("Borttagen"); route(); };
   });
 }
