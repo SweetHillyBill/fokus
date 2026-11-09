@@ -95,3 +95,7 @@ button.small{font-size:14px;padding:6px 10px;min-height:0}
 body.locked{overflow:hidden;overscroll-behavior:none}
 .sheet{background:rgba(0,0,0,.6);touch-action:none;overscroll-behavior:contain}
 .sheet .inner{touch-action:pan-y;overscroll-behavior:contain;max-height:88vh}
+
+/* Coach: knapparna fasta upptill, skrivrutan fast nertill */
+.chips{position:sticky;top:var(--hdr,60px);z-index:4;background:var(--bg);margin:-14px -14px 0;padding:12px 14px;border-bottom:1px solid var(--line)}
+#ci{position:sticky;bottom:var(--nav,64px);z-index:4;background:var(--bg);margin:0 -14px;padding:10px 14px;border-top:1px solid var(--line)}

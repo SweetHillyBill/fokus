@@ -233,10 +233,11 @@ async function coachView() {
     ["⏱ Dela upp i tid", "Hjälp mig dela upp en stor uppgift i tidsblock i stället för moment. Fråga vilken."],
     ["🎯 Vad gör jag nu?", "Vad ska jag göra nu? Välj en sak utifrån det som ligger idag."],
   ];
-  view.innerHTML = `<h1>Coach</h1>
-    <div class="chips">${chips.map(([l], i) => `<button class="chip" data-c="${i}">${l}</button>`).join("")}</div>
+  view.innerHTML = `<div class="chips">${chips.map(([l], i) => `<button class="chip" data-c="${i}">${l}</button>`).join("")}</div>
     <div id="chat">${msgs.map((m) => `<div class="bubble ${m.role === "user" ? "u" : "a"}">${esc(m.content)}</div>`).join("") || `<div class="bubble a">Hej Calle! Jag hjälper dig bryta ner saker, dela upp i tid och få in kontorstiden i veckan. Tryck på en knapp ovan eller skriv.</div>`}</div>
     <div class="add" id="ci"><input placeholder="Skriv till coachen…" enterkeyhint="send"><button>➤</button></div>`;
+  document.documentElement.style.setProperty("--hdr", $("#top").offsetHeight + "px");
+  document.documentElement.style.setProperty("--nav", $("#nav").offsetHeight + "px");
   const chat = $("#chat"), inp = $("#ci input");
   const send = async (txt) => {
     txt = (txt ?? inp.value).trim(); if (!txt) return; inp.value = "";
