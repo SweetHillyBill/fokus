@@ -1,4 +1,4 @@
-const CACHE = "fokus-v4";
+const CACHE = "fokus-v5";
 const SHELL = ["./", "index.html", "app.js", "style.css", "manifest.json", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {

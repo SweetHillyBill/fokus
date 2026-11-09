@@ -143,13 +143,20 @@ async function pickOrNew(day) {
 
 // ---------- LISTA ----------
 async function lista() {
-  const all = await q(sb.from("tasks").select("*").in("status", ["inkorg", "planerad", "pagar"]).order("created_at"));
+  const [all, klara] = await Promise.all([
+    q(sb.from("tasks").select("*").in("status", ["inkorg", "planerad", "pagar"]).order("created_at")),
+    q(sb.from("tasks").select("*").eq("status", "klar").order("completed_at", { ascending: false }).limit(100)),
+  ]);
+  const byDay = {};
+  klara.forEach((t) => { const d = new Date(t.completed_at).toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" }); (byDay[d] ||= []).push(t); });
   const unplanned = all.filter((t) => !t.scheduled_for), planned = all.filter((t) => t.scheduled_for).sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for));
   const add = addBox("Ny uppgift…", (v) => newTask(v).then(route));
   view.innerHTML = `<h1>Att göra</h1><div id="add">${add.html}</div>
     <h2>Ej planerat (${unplanned.length})</h2>
     <div class="card list">${unplanned.map((t) => row(t)).join("") || `<p class="empty">Allt är planerat.</p>`}</div>
-    ${planned.length ? `<h2>Planerat (${planned.length})</h2><div class="card list">${planned.map((t) => row(t, { showDay: true })).join("")}</div>` : ""}`;
+    ${planned.length ? `<h2>Planerat (${planned.length})</h2><div class="card list">${planned.map((t) => row(t, { showDay: true })).join("")}</div>` : ""}
+    <h2>Slutfört (${klara.length})</h2>
+    ${Object.entries(byDay).map(([d, l]) => `<div class="meta" style="margin:10px 0 4px">${cap(dayLabel(d))}</div><div class="card list">${l.map((t) => row(t)).join("")}</div>`).join("") || `<p class="empty">Inget slutfört än.</p>`}`;
   add.bind($("#add")); bindRows();
 }
 
