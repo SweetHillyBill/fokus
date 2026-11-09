@@ -86,3 +86,7 @@ button.small{font-size:14px;padding:6px 10px;min-height:0}
 
 .sheetbar{position:sticky;top:-18px;margin:-18px -16px 8px;padding:12px 10px;background:var(--bg);z-index:2;border-bottom:1px solid var(--line)}
 .back{background:transparent;color:var(--accent);font-size:18px;padding:8px 10px;min-height:44px}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;margin:0 -14px;padding-left:14px}
+.chip{flex:none;background:var(--soft);color:var(--ink);font-size:14px;padding:10px 12px;min-height:0;border-radius:99px;font-weight:600}
+#chat{min-height:40vh}

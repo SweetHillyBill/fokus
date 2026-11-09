@@ -9,6 +9,8 @@ const $ = (s, el = document) => el.querySelector(s);
 const view = $("#view");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let user = null;
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
 let weekOffset = (new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm", weekday: "long" }) === "söndag") ? 1 : 0;
 
 // ---------- Datum ----------
@@ -38,15 +40,15 @@ function hideSheet() { $("#sheet").classList.add("hidden"); $("#sheet").innerHTM
 function closeSheet() { hideSheet(); if (history.state?.sheet) history.back(); }
 // Androids bakåtknapp stänger rutan i stället för att lämna appen
 window.addEventListener("popstate", () => { if (!$("#sheet").classList.contains("hidden")) { hideSheet(); route(); } });
-async function aiBreakdown(id, extra) {
-  const { data, error } = await sb.functions.invoke("coach", { body: { mode: "breakdown", task_id: id, extra } });
+async function aiBreakdown(id, extra, style) {
+  const { data, error } = await sb.functions.invoke("coach", { body: { mode: "breakdown", task_id: id, extra, style } });
   if (error) { let m = error.message; try { const j = await error.context.json(); m = j.error || m; } catch {} throw new Error(m); }
   if (data?.error) throw new Error(data.error);
   return data;
 }
 
 // ---------- Router ----------
-const routes = { idag, vecka, lista };
+const routes = { idag, vecka, lista, coach: coachView };
 async function route() {
   if (!user) return login();
   const r = location.hash.slice(1) || "idag";
@@ -183,8 +185,8 @@ async function openTask(id) {
     <label>Dag</label>
     <div class="seg">${dayBtns.map(([l, v]) => `<button data-day="${v}" class="${(t.scheduled_for || "") === v ? "on" : ""}">${l}</button>`).join("")}</div>
     <input id="dt" type="date" value="${t.scheduled_for || ""}" style="margin-top:8px">
-    <div class="row between" style="margin-top:18px"><h2 style="margin:0">Steg</h2><button id="ai" class="sec small">✨ Bryt ner</button></div>
-    <div id="steps">${steps.map((s, i) => `<div class="step"><input type="checkbox" data-i="${i}" ${s.done ? "checked" : ""}><span class="grow ${s.done ? "struck" : ""}">${esc(s.text)}</span><button class="ghost small" data-up="${i}" title="Gör till egen uppgift">↗</button><button class="ghost small" data-rm="${i}">✕</button></div>`).join("") || `<p class="empty small">Inga steg än. Tryck på Bryt ner, eller skriv egna nedan.</p>`}</div>
+    <div class="row between" style="margin-top:18px"><h2 style="margin:0">Steg</h2><div class="row"><button id="ai" class="sec small">✨ I steg</button><button id="ait" class="sec small">⏱ I tidsblock</button></div></div>
+    <div id="steps">${steps.map((s, i) => `<div class="step"><input type="checkbox" data-i="${i}" ${s.done ? "checked" : ""}><span class="grow ${s.done ? "struck" : ""}">${esc(s.text)}</span><button class="ghost small" data-up="${i}" title="Gör till egen uppgift">↗</button><button class="ghost small" data-rm="${i}">✕</button></div>`).join("") || `<p class="empty small">Inga steg än. Låt coachen dela upp i steg eller i tidsblock, eller skriv egna nedan.</p>`}</div>
     <div class="add" id="ns"><input placeholder="Lägg till steg…" enterkeyhint="done"><button>+</button></div>
     ${steps.length ? `<p class="muted small">↗ gör ett steg till en egen uppgift som du kan planera på en dag och bryta ner vidare.</p>` : ""}
     ${children.length ? `<h2>Deluppgifter</h2><div class="card list" id="kids">${children.map((c) => row(c, { showDay: true })).join("")}</div>` : ""}
@@ -203,22 +205,52 @@ async function openTask(id) {
     });
     const ns = $("#ns", s); const addStep = async () => { const v = ns.querySelector("input").value.trim(); if (!v) return; await save({ steps: [...steps, { text: v, done: false }] }); reopen(); };
     ns.querySelector("button").onclick = addStep; ns.querySelector("input").onkeydown = (e) => { if (e.key === "Enter") addStep(); };
-    $("#ai", s).onclick = async (e) => {
-      e.target.disabled = true; e.target.textContent = "Tänker…";
-      try {
-        const old = steps.slice();
-        const r = await aiBreakdown(id);
-        // behåll egna steg som inte finns i förslaget
-        const ai = (r.steps || []).map((x) => ({ text: x, done: false }));
-        await save({ steps: [...old.filter((o) => o.done), ...ai] });
-        reopen();
-      } catch (er) { toast(er.message, 5000); e.target.disabled = false; e.target.textContent = "✨ Bryt ner"; }
+    const breakdown = (style) => async (e) => {
+      const txt = e.target.textContent; e.target.disabled = true; e.target.textContent = "Tänker…";
+      try { const r = await aiBreakdown(id, undefined, style); if (r.pep) toast(r.pep, 4000); reopen(); }
+      catch (er) { toast(er.message, 5000); e.target.disabled = false; e.target.textContent = txt; }
     };
+    $("#ai", s).onclick = breakdown("steg");
+    $("#ait", s).onclick = breakdown("tid");
     if (children.length) bindRows($("#kids", s));
     const par = $("#par", s); if (par) par.onclick = () => openTask(parent.id);
     $("#dn", s).onclick = async () => { closeSheet(); await toggleDone(id); };
     $("#rm", s).onclick = async () => { await save({ status: "struken" }); closeSheet(); toast("Borttagen"); route(); };
   });
+}
+
+
+// ---------- COACH ----------
+async function coachView() {
+  const msgs = await q(sb.from("coach_messages").select("*").order("created_at", { ascending: false }).limit(20));
+  msgs.reverse();
+  const chips = [
+    ["🗂️ Planera kontorstid", "Planera in kontor och administration för den här veckan. Lägg in korta kontorspass på fasta tider med konkreta steg, utifrån det som väntar."],
+    ["🧾 Kontorspass nu", "Jag ska sätta mig med admin nu. Gör ett kontorspass på 25 minuter för idag med en konkret lista i ordning, börja med det lättaste."],
+    ["🐢 Kommer inte igång", "Jag kommer inte igång. Hjälp mig med ett första steg på under fem minuter."],
+    ["⏱ Dela upp i tid", "Hjälp mig dela upp en stor uppgift i tidsblock i stället för moment. Fråga vilken."],
+    ["🎯 Vad gör jag nu?", "Vad ska jag göra nu? Välj en sak utifrån det som ligger idag."],
+  ];
+  view.innerHTML = `<h1>Coach</h1>
+    <div class="chips">${chips.map(([l], i) => `<button class="chip" data-c="${i}">${l}</button>`).join("")}</div>
+    <div id="chat">${msgs.map((m) => `<div class="bubble ${m.role === "user" ? "u" : "a"}">${esc(m.content)}</div>`).join("") || `<div class="bubble a">Hej Calle! Jag hjälper dig bryta ner saker, dela upp i tid och få in kontorstiden i veckan. Tryck på en knapp ovan eller skriv.</div>`}</div>
+    <div class="add" id="ci"><input placeholder="Skriv till coachen…" enterkeyhint="send"><button>➤</button></div>`;
+  const chat = $("#chat"), inp = $("#ci input");
+  const send = async (txt) => {
+    txt = (txt ?? inp.value).trim(); if (!txt) return; inp.value = "";
+    chat.insertAdjacentHTML("beforeend", `<div class="bubble u">${esc(txt)}</div><div class="bubble a" id="wait">Tänker…</div>`);
+    $("#wait").scrollIntoView({ block: "end" });
+    try {
+      const { data, error } = await sb.functions.invoke("coach", { body: { mode: "chat", message: txt } });
+      if (error) { let m = error.message; try { const j = await error.context.json(); m = j.error || m; } catch {} throw new Error(m); }
+      if (data?.error) throw new Error(data.error);
+      $("#wait").outerHTML = `<div class="bubble a">${esc(data.reply)}${data.actions?.length ? `<div class="meta" style="margin-top:6px">${data.actions.map((a) => "✓ " + esc(a)).join("<br>")}</div>` : ""}</div>`;
+    } catch (e) { $("#wait").outerHTML = `<div class="bubble a">Kunde inte nå coachen: ${esc(e.message)}</div>`; }
+    chat.lastElementChild.scrollIntoView({ block: "end" });
+  };
+  $("#ci button").onclick = () => send(); inp.onkeydown = (e) => { if (e.key === "Enter") send(); };
+  view.querySelectorAll("[data-c]").forEach((b) => b.onclick = () => send(chips[+b.dataset.c][1]));
+  chat.lastElementChild?.scrollIntoView({ block: "end" });
 }
 
 // ---------- Inställningar (kugghjulet) ----------
@@ -227,8 +259,10 @@ $("#gear").onclick = () => {
   sheet(`<h2 style="margin-top:0">Inställningar</h2>
     <p class="small muted">Notiser: ${perm === "granted" ? "på ✓" : "av"}. Du får en notis 06:45 vardagar med dagens att göra, och söndag 10:00 en påminnelse om att planera veckan.</p>
     <div class="row"><button id="pu" class="grow">Slå på notiser</button><button id="tp" class="sec">Testa</button></div>
+    ${installEvt ? `<button id="inst" class="big" style="margin-top:12px">📲 Installera som app</button>` : (matchMedia("(display-mode: standalone)").matches ? `<p class="small muted" style="margin-top:12px">Fokus körs som app ✓</p>` : `<p class="small muted" style="margin-top:12px">Installera som app: Chromes meny ⋮ och "Installera app".</p>`)}
     <button id="lo" class="danger" style="margin-top:20px">Logga ut</button>`, (s) => {
     $("#pu", s).onclick = enablePush;
+    const inst = $("#inst", s); if (inst) inst.onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; closeSheet(); };
     $("#tp", s).onclick = async () => { const { data } = await sb.functions.invoke("coach", { body: { mode: "test_push" } }); toast(data?.sent ? "Skickad, kolla mobilen" : "Slå på notiser först"); };
     $("#lo", s).onclick = async () => { closeSheet(); await sb.auth.signOut(); };
   });

@@ -28,11 +28,13 @@ Deno.serve(async (req) => {
       const { data: t } = await db.from("tasks").select("*").eq("id", body.task_id).eq("user_id", uid).single();
       if (!t) return json({ error: "Uppgiften finns inte" }, 404);
       const prompt = `Uppgift: "${t.title}"${t.done_definition ? `. Klart när: ${t.done_definition}` : ""}${body.extra ? `. Calle säger: ${body.extra}` : ""}.
-Bryt ner den för någon med adhd som har svårt att komma igång. Första steget ska ta under fem minuter och vara fysiskt konkret. Högst sju steg totalt. Uppskatta realistisk tid och lägg på 50 procent. Föreslå en tydlig definition av klart om den saknas, och en om/så plan.
+${body.style === "tid"
+  ? "Dela upp den i TIDSBLOCK i stället för moment, för någon med adhd som har svårt att komma igång. Varje steg börjar med tiden, till exempel \"15 min: ...\" eller \"25 min: ...\". Block på 10 till 25 minuter, högst sex block. Första blocket är kort (5 till 10 minuter) och börjar med något fysiskt och litet. Lägg in korta pauser som egna steg om det är fler än två block i rad. Målet för varje block är att jobba tiden, inte att bli klar."
+  : "Bryt ner den för någon med adhd som har svårt att komma igång. Första steget ska ta under fem minuter och vara fysiskt konkret. Högst sju steg totalt."} Uppskatta realistisk tid och lägg på 50 procent. Föreslå en tydlig definition av klart om den saknas, och en om/så plan.
 Svara ENDAST med JSON: {"first_step":"...","steps":["..."],"estimate_min":30,"done_definition":"...","if_then":"När ..., då ...","pep":"en kort peppande mening"}`;
       const out = parseJson(await claude(MODEL_FAST, COACH_SYSTEM, [{ role: "user", content: prompt }], 800));
       await db.from("tasks").update({
-        first_step: out.first_step, steps: (out.steps || []).map((s: string) => ({ text: s, done: false })),
+        first_step: out.first_step, steps: [...(t.steps || []).filter((s: any) => s.done || s.ha_uid), ...(out.steps || []).map((s: string) => ({ text: s, done: false }))],
         estimate_min: out.estimate_min, done_definition: t.done_definition || out.done_definition,
       }).eq("id", t.id);
       return json(out);
@@ -46,13 +48,13 @@ Svara ENDAST med JSON: {"first_step":"...","steps":["..."],"estimate_min":30,"do
       const history = (hist || []).reverse();
       const sys = `${COACH_SYSTEM}
 
-Du har tillgång till Calles data nedan och kan AGERA genom att returnera åtgärder. Gör det när det hjälper, utan att fråga om det är uppenbart (lägga till uppgift, parkera idé, sätta påminnelse, bocka av). Fråga först vid större ändringar (lägga ned projekt). När Calle vill starta något nytt: parkera det och påminn om det pågående, om inte taket för aktiva projekt tillåter.
+Du har tillgång till Calles data nedan och kan AGERA genom att returnera åtgärder. Gör det när det hjälper, utan att fråga om det är uppenbart (lägga till uppgift, parkera idé, sätta påminnelse, bocka av). Fråga först vid större ändringar (lägga ned projekt). När Calle ber dig planera in något (till exempel kontorspass) ska du lägga in uppgifterna på rätt dagar med add_task, scheduled_for och steps, inte bara föreslå. Svara kort, högst fem meningar, och skriv inte ut hela listan om du redan har lagt in den. När Calle vill starta något nytt: parkera det och påminn om det pågående, om inte taket för aktiva projekt tillåter.
 
 ${ctx.text}
 
 Svara ENDAST med JSON:
 {"reply":"ditt svar till Calle, kort och peppande","actions":[
- {"type":"add_task","title":"...","project_id":null,"scheduled_for":null,"due_date":null,"first_step":"...","priority":2},
+ {"type":"add_task","title":"...","project_id":null,"scheduled_for":"YYYY-MM-DD eller null","due_date":null,"first_step":"...","priority":2,"steps":["steg 1","steg 2"]},
  {"type":"park_idea","text":"..."},
  {"type":"reminder","in_min":15,"title":"...","body":"..."},
  {"type":"complete_task","task_id":"..."},
@@ -142,6 +144,7 @@ async function runActions(db: any, uid: string, today: string, actions: any[], s
             project_id: isId(a.project_id) ? a.project_id : null,
             scheduled_for: a.scheduled_for || null, due_date: a.due_date || null,
             status: a.scheduled_for ? "planerad" : "inkorg",
+            steps: Array.isArray(a.steps) ? a.steps.map((x: any) => ({ text: String(x), done: false })) : [],
           });
           done.push(`Lade till uppgift: ${a.title}`);
           break;
