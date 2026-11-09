@@ -31,12 +31,13 @@ function sheet(html, onMount) {
   const s = $("#sheet"); const wasOpen = !s.classList.contains("hidden");
   s.innerHTML = `<div class="inner"><div class="sheetbar"><button class="back" id="sback">‹ Tillbaka</button></div>${html}</div>`;
   s.classList.remove("hidden");
+  document.body.classList.add("locked");
   if (!wasOpen) history.pushState({ sheet: 1 }, "");
   s.onclick = (e) => { if (e.target === s) closeSheet(); };
   $("#sback", s).onclick = () => { closeSheet(); route(); };
   onMount && onMount(s);
 }
-function hideSheet() { $("#sheet").classList.add("hidden"); $("#sheet").innerHTML = ""; }
+function hideSheet() { $("#sheet").classList.add("hidden"); $("#sheet").innerHTML = ""; document.body.classList.remove("locked"); }
 function closeSheet() { hideSheet(); if (history.state?.sheet) history.back(); }
 // Androids bakåtknapp stänger rutan i stället för att lämna appen
 window.addEventListener("popstate", () => { if (!$("#sheet").classList.contains("hidden")) { hideSheet(); route(); } });

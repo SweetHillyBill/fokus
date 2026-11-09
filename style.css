@@ -90,3 +90,8 @@ button.small{font-size:14px;padding:6px 10px;min-height:0}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;margin:0 -14px;padding-left:14px}
 .chip{flex:none;background:var(--soft);color:var(--ink);font-size:14px;padding:10px 12px;min-height:0;border-radius:99px;font-weight:600}
 #chat{min-height:40vh}
+
+/* Lås bakgrunden när en ruta är öppen */
+body.locked{overflow:hidden;overscroll-behavior:none}
+.sheet{background:rgba(0,0,0,.6);touch-action:none;overscroll-behavior:contain}
+.sheet .inner{touch-action:pan-y;overscroll-behavior:contain;max-height:88vh}
