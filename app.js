@@ -183,6 +183,7 @@ async function openTask(id) {
   sheet(`
     ${parent ? `<button class="ghost small" id="par">‹ Del av: ${esc(parent.title)}</button>` : ""}
     <input id="ti" class="titlein" value="${esc(t.title)}">
+    ${t.link ? `<a class="btn sec" href="${esc(t.link)}" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;margin:4px 0 6px;background:var(--soft);color:var(--ink)">✉️ Öppna mejlet</a>` : ""}
     <label>Dag</label>
     <div class="seg">${dayBtns.map(([l, v]) => `<button data-day="${v}" class="${(t.scheduled_for || "") === v ? "on" : ""}">${l}</button>`).join("")}</div>
     <input id="dt" type="date" value="${t.scheduled_for || ""}" style="margin-top:8px">
